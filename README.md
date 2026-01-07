@@ -7,11 +7,6 @@ The architecture maintains **100% bucket privacy** while offloading heavy data t
 
 ---
 
-## Architecture Diagram
-*(Add diagram here if available)*
-
----
-
 ## Key Achievements (Rubric Compliance)
 
 - **Infrastructure as Code (IaC):**  
