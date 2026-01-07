@@ -1,0 +1,68 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Final Laboratory - Signed URL File Gateway
+
+Globals:
+  Function:
+    Timeout: 5
+    MemorySize: 128
+    Runtime: python3.9
+
+Resources:
+  # 1. Private S3 Bucket (Security Requirement)
+  FileStorageBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "file-gateway-storage-${AWS::AccountId}-${AWS::Region}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # 2. Endpoint A: POST Upload Handler
+  UploadFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: upload_handler/
+      Handler: app.lambda_handler
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref FileStorageBucket
+      Policies:
+        - S3WritePolicy:
+            BucketName: !Ref FileStorageBucket
+      Events:
+        UploadApi:
+          Type: HttpApi
+          Properties:
+            Path: /files
+            Method: post
+
+  # 3. Endpoint B: GET Download Handler
+  DownloadFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: download_handler/
+      Handler: app.lambda_handler
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref FileStorageBucket
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref FileStorageBucket
+      Events:
+        DownloadApi:
+          Type: HttpApi
+          Properties:
+            Path: /files/{objectKey}
+            Method: get
+
+Outputs:
+  # This references the auto-created API
+  ApiEndpoint:
+    Description: "HTTP API Gateway endpoint URL"
+    Value: !Sub "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+  BucketName:
+    Description: "The name of the private S3 bucket"
+    Value: !Ref FileStorageBucket
