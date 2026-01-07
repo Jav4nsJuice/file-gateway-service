@@ -1,94 +1,118 @@
-Secure Serverless File Gateway (AWS Lab 4)
-Project Overview
-This project implements a secure, serverless "File Gateway" using AWS SAM (Serverless Application Model). It allows users to upload and download files to a Private S3 Bucket via time-limited, cryptographically signed URLs.
+# Secure Serverless File Gateway (AWS Lab 4)
 
-The architecture maintains 100% bucket privacy while offloading heavy data transfers directly to Amazon S3, using AWS Lambda only for logic and authorization.
+## Project Overview
+This project implements a secure, serverless **File Gateway** using **AWS SAM (Serverless Application Model)**. It allows users to upload and download files to a **private S3 bucket** via **time-limited, cryptographically signed URLs**.
 
-Architecture Diagram
-Key Achievements (Rubric Compliance)
-Infrastructure as Code (IaC): 100% of resources (S3, Lambda, IAM, API Gateway) are defined in template.yaml.
+The architecture maintains **100% bucket privacy** while offloading heavy data transfers directly to **Amazon S3**, using **AWS Lambda** only for logic and authorization.
 
-Security: S3 bucket has PublicAccessBlockConfiguration enabled. No public access is permitted.
+---
 
-Protocol Semantics: Implements HTTP 307 Temporary Redirect for the download flow to preserve request integrity.
+## Architecture Diagram
+*(Add diagram here if available)*
 
-Regional Robustness: Specifically configured for the us-east-2 (Ohio) region using Signature Version 4 (SigV4).
+---
 
-Prerequisites
+## Key Achievements (Rubric Compliance)
+
+- **Infrastructure as Code (IaC):**  
+  100% of resources (S3, Lambda, IAM, API Gateway) are defined in `template.yaml`.
+
+- **Security:**  
+  S3 bucket has `PublicAccessBlockConfiguration` enabled. No public access is permitted.
+
+- **Protocol Semantics:**  
+  Implements **HTTP 307 Temporary Redirect** for the download flow to preserve request integrity.
+
+- **Regional Robustness:**  
+  Specifically configured for **us-east-2 (Ohio)** using **Signature Version 4 (SigV4)**.
+
+---
+
+## Prerequisites
+
 Before deploying, ensure you have the following:
 
-AWS Account: Active credentials configured locally.
+- **AWS Account:** Active credentials configured locally
+- **AWS SAM CLI:** Installed and up to date
+- **Python 3.9:** Installed (matches the Lambda runtime)
+- **Target Region:** Optimized for `us-east-2` to handle specific S3 regional signature requirements
 
-AWS SAM CLI: Installed and updated.
+---
 
-Python 3.9: Installed (matches the Lambda runtime).
+## Deployment Instructions
 
-Target Region: Optimized for us-east-2 to handle specific S3 regional signature requirements.
+### Step 1: Fork and Clone
 
-Deployment Instructions
-1. Fork and Clone
-Fork this repository to your GitHub account and clone it:
-
-Bash
-
+```bash
 git clone https://github.com/YOUR_USERNAME/file-gateway-service.git
 cd file-gateway-service
-2. Build the Application
-Bash
+```
 
+### Step 2: Build the Application
+
+```bash
 sam build
-3. Deploy (Guided)
-Use the guided mode to set the region to us-east-2:
+```
 
-Bash
+### Step 3: Deploy (Guided)
 
+```bash
 sam deploy --guided
-Configuration Settings:
+```
 
-Stack Name: file-gateway-service
+#### Configuration Settings
 
-AWS Region: us-east-2
+- **Stack Name:** `file-gateway-service`
+- **AWS Region:** `us-east-2`
+- **Allow SAM CLI to create IAM roles:** Yes
+- **Allow SAM CLI to create API:** Yes
+- **Save arguments to configuration file:** Yes
 
-Allow SAM CLI to create IAM roles: Yes
+---
 
-Allow SAM CLI to create API: Yes
+## Functionality Verification
 
-Save arguments to configuration file: Yes
+### Endpoint A: `POST /files` (Upload)
 
-Functionality Verification
-Endpoint A: POST /files (Upload)
-This endpoint generates a pre-signed URL for a direct S3 upload.
-
-Bash
-
+```bash
 curl -X POST <ApiEndpoint>/files \
-     -H "Content-Type: application/json" \
-     -d '{"filename": "test-file.txt"}'
-Expected Result: A JSON response containing uploadUrl.
+  -H "Content-Type: application/json" \
+  -d '{"filename": "test-file.txt"}'
+```
 
-Execution: Use the uploadUrl with a PUT request:
+**Expected Result:**  
+A JSON response containing `uploadUrl`.
 
-Bash
-
+```bash
 curl -X PUT -T "test-file.txt" "<UPLOAD_URL>"
-Endpoint B: GET /files/{objectKey} (Download)
-This endpoint demonstrates the Redirect Logic.
+```
 
-Bash
+---
 
+### Endpoint B: `GET /files/{objectKey}` (Download)
+
+```bash
 curl -i <ApiEndpoint>/files/test-file.txt
-Expected Result: HTTP/2 307 Temporary Redirect.
+```
 
-Location Header: Contains the S3 pre-signed URL valid for 1 hour.
+**Expected Result:**
 
-Follow Redirect: Use curl -L to automatically follow the redirect and download the file content:
+- `HTTP/2 307 Temporary Redirect`
+- `Location` header contains an S3 pre-signed URL valid for 1 hour
 
-Bash
-
+```bash
 curl -L <ApiEndpoint>/files/test-file.txt
-Technical Implementation Notes
-Redirect Logic: Used HTTP 307 to ensure that a browser or client does not change the GET method to any other method during the redirect.
+```
 
-Boto3 Configuration: The Lambda handlers explicitly use an endpoint_url for s3.us-east-2.amazonaws.com and signature_version='s3v4' to ensure compatibility with regional S3 signature requirements.
+---
 
-Least Privilege: IAM roles for the Lambda functions are restricted to only the necessary S3 actions (PutObject for uploads and GetObject for downloads).
+## Technical Implementation Notes
+
+- **Redirect Logic:**  
+  Uses **HTTP 307** to ensure the client preserves the original HTTP method during redirects.
+
+- **Boto3 Configuration:**  
+  Explicitly uses `s3.us-east-2.amazonaws.com` and `signature_version='s3v4'`.
+
+- **Least Privilege:**  
+  IAM roles are restricted to `PutObject` and `GetObject`.
